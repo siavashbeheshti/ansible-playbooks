@@ -1,0 +1,65 @@
+---
+- name: Cisco IOS Archiving
+  hosts: all
+  gather_facts: false
+
+# FTP Server information
+  vars:
+    ftp_information:
+      username: ftpusername
+      password: ftppassword
+      path: ftp://10.10.10.10/Backup/$h/$t
+
+  tasks:
+# Turn off confirm prompt for file operations on device
+    - name: Turn off the confirm prompt
+      cisco.ios.ios_config:
+        lines:
+          - file prompt quiet
+
+# FTP Server configuration on Cisco device
+    - name: Configure FTP Server
+      cisco.ios.ios_config:
+        lines:
+          - ip ftp username {{ ftp_information.username }}
+          - ip ftp password {{ ftp_information.password }}
+
+# Archiving configuration which enables logging
+# and hide passwords when displaying logged commands
+    - name: Configure Archiving/Log Config
+      cisco.ios.ios_config:
+        lines:
+        - logging enable
+        - hidekeys
+        parents: 
+        - archive
+        - log config
+
+# Archiving configuration which define path for backups
+# and enable automatic backup generation during write memory
+    - name: Configure Archiving
+      cisco.ios.ios_config:
+        lines:
+        - path {{ ftp_information.path }}
+        - write-memory
+        - time-period 10080 # Automatically archive the running-config once a week
+        parents: 
+        - archive
+
+# Show most recent arhives
+    - name: Show Archive
+      ios_command:
+        commands: show archive
+      register: output
+
+    - name: print output
+      debug:
+        var: output.stdout_lines
+
+# Save configuration to NVRAM
+    - name: Save running-config to startup-config
+      ios_command:
+        commands: copy running-config startup-config
+      vars: 
+        ansible_command_timeout: 60
+...
