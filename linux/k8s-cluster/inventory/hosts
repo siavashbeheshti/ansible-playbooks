@@ -1,0 +1,5 @@
+[masters]
+kubenode1 ansible_host=192.168.56.11 new_hostname=kubenode1
+
+[workers]
+kubenode2 ansible_host=192.168.56.12 new_hostname=kubenode2

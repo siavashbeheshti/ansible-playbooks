@@ -1,0 +1,3 @@
+ansible_user: 'siavash'
+ansible_password: 'S1234'
+ansible_become_password: 'S1234'

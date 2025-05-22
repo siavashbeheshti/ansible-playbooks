@@ -1,0 +1,47 @@
+- name: Initialize the Kubernetes cluster on the master node
+  hosts: masters
+  become: true
+  tasks:
+    - name: Initialize the Kubernetes cluster using kubeadm
+      ansible.builtin.command: kubeadm init --control-plane-endpoint=192.168.56.11 --pod-network-cidr=10.244.0.0/16 --upload-certs
+      args:
+        creates: /etc/kubernetes/admin.conf
+      timeout: 300
+
+    - name: Create .kube directory
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copy admin.conf to user's .kube directory
+      ansible.builtin.copy:
+        src: "/etc/kubernetes/admin.conf"
+        dest: "/home/{{ ansible_user }}/.kube/config"
+        remote_src: true
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+- name: Install Flannel
+  hosts: masters
+  become: false
+  tasks:
+    - name: Wait for API Server
+      ansible.builtin.wait_for:
+        host: 192.168.56.11
+        port: 6443
+
+    - name: Apply Flannel CNI network overlay
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+      changed_when: false
+
+- name: Install Metrics Server
+  hosts: masters
+  become: false
+  tasks:
+    - name: Apply Metrics Server
+      ansible.builtin.command: kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+      changed_when: false
